@@ -10,13 +10,14 @@ import numpy as np
 camera = PiCamera()
 camera.resolution = (640, 480)
 camera.framerate = 32
+camera.rotation = 180
 rawCapture = PiRGBArray(camera, size=(640, 480))
  
 while True:
     while True:
         try:
             hue_value = int(input("Hue value between 10 and 245: "))
-            if (hue_value < 10) or (hue_value > 245):
+            if (hue_value < 1) or (hue_value > 254):
                 raise ValueError
         except ValueError:
             print("That isn't an integer between 10 and 245, try again")
@@ -27,6 +28,7 @@ while True:
     upper_red = np.array([hue_value+10, 255, 255])
  
     for frame in camera.capture_continuous(rawCapture, format="bgr", use_video_port=True):
+      try:
         image = frame.array
  
         hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
@@ -45,3 +47,5 @@ while True:
         k = cv2.waitKey(5) #& 0xFF
         if "q" == chr(k & 255):
             break
+      except KeyboardInterrupt:
+        break
