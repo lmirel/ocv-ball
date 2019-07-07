@@ -166,49 +166,72 @@ if not pi.connected:
 pwm = PCA9685.PWM(pi) # defaults to bus 1, address 0x40
 pwm.set_frequency(50) # suitable for servos
 #robot = gpiozero.Robot(left=(22,27), right=(17,18))
-forward_speed = 10000
+
+#movement speed
+speed_min = 6000
+forward_speed = 8000
+speed_max = 10000
+#steering
+steer_min = 1100
 go_straight = 1500
+steer_max = 1900
 turn_speed = 200
 
-"orange: 10"
-"red: 0"
+#orange: 10
+#red: 175
 HUE_VAL = 175
- 
+
+#car control
+def car_control (turn_angle, move_speed):
+    #steering
+    pwm.set_pulse_width (0, go_straight + turn_angle)
+    #left motor
+    pwm.set_pulse_width (4, move_speed)
+    #right motor
+    pwm.set_pulse_width (5, move_speed)
+    #forward motion
+    pwm.set_pulse_width (6, 0)
+    pwm.set_pulse_width (7, 0)
+
+#integer mapping
+def int_map (val, in_min, in_max, out_min, out_max):
+   return int((x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min)
+
+#camera processing
 lower_color = np.array([HUE_VAL-10,100,100])
 upper_color = np.array([HUE_VAL+10, 255, 255])
-for frame in camera.capture_continuous(rawCapture, format="bgr", use_video_port=True):
+for frame in camera.capture_continuous (rawCapture, format="bgr", use_video_port=True):
   try:
     image = frame.array
-    #snip
-    # resize the frame, blur it, and convert it to the HSV                                                                                                                                                                                                                    
-    # color space                                                                                                                                                                                                                                                             
-    #frame = imutils.resize(frame, width=600)                                                                                                                                                                                                                                  
-    #frame = imutils.rotate(frame, angle=180)                                                                                                                                                                                                                                  
-    blurred = cv2.GaussianBlur(image, (11, 11), 0)                                                                                                                                                                                                                            
-    hsv = cv2.cvtColor(blurred, cv2.COLOR_BGR2HSV)                                                                                                                                                                                                                            
-                                                                                                                                                                                                                                                                              
-    # construct a mask for the color "green", then perform                                                                                                                                                                                                                    
-    # a series of dilations and erosions to remove any small                                                                                                                                                                                                                  
-    # blobs left in the mask                                                                                                                                                                                                                                                  
-    mask = cv2.inRange (hsv, lower_color, upper_color)                                                                                                                                                                                                                           
-    mask = cv2.erode (mask, None, iterations=2)                                                                                                                                                                                                                                
-    mask = cv2.dilate (mask, None, iterations=2)                                                                                                                                                                                                                               
-                                                                                                                                                                                                                                                                              
-    # find contours in the mask and initialize the current                                                                                                                                                                                                                    
-    # (x, y) center of the ball                                                                                                                                                                                                                                               
-    #cnts = cv2.findContours (mask.copy(), cv2.RETR_EXTERNAL,                                                                                                                                                                                                                   
-    #    cv2.CHAIN_APPROX_SIMPLE)                              
-    #snip
+    #+snip
+    # resize the frame, blur it, and convert it to the HSV
+    # color space
+    #frame = imutils.resize(frame, width=600)
+    #frame = imutils.rotate(frame, angle=180)
+    blurred = cv2.GaussianBlur(image, (11, 11), 0)
+    hsv = cv2.cvtColor(blurred, cv2.COLOR_BGR2HSV)
+
+    # construct a mask for the color "green", then perform
+    # a series of dilations and erosions to remove any small
+    # blobs left in the mask
+    colmask = cv2.inRange (hsv, lower_color, upper_color)
+    colmask = cv2.erode (colmask, None, iterations=2)
+    colmask = cv2.dilate (colmask, None, iterations=2)
+
+    # find contours in the mask and initialize the current
+    # (x, y) center of the ball
+    #cnts = cv2.findContours (mask.copy(), cv2.RETR_EXTERNAL,
+    #    cv2.CHAIN_APPROX_SIMPLE)
+    #-snip
     #hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
- 
+    #
     #color_mask = cv2.inRange(hsv, lower_color, upper_color)
- 
-    image2, countours, hierarchy = cv2.findContours(mask.copy(), cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
- 
+    #find contours
+    image2, countours, hierarchy = cv2.findContours (colmask, cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
+    #our object
     object_area = 0
     object_x = 0
     object_y = 0
-    cnt_k = 0
     #look for largest area we see
     for contour in countours:
         x, y, width, height = cv2.boundingRect(contour)
@@ -216,7 +239,6 @@ for frame in camera.capture_continuous(rawCapture, format="bgr", use_video_port=
         center_x = x + (width / 2)
         center_y = y + (height / 2)
         #print ("contour: ", cnt_k)
-        cnt_k = cnt_k + 1
         #print ("center x: ", center_x)
         #print ("center y: ", center_y)
         #store largest area
@@ -226,66 +248,50 @@ for frame in camera.capture_continuous(rawCapture, format="bgr", use_video_port=
             object_y = center_y
     if object_area > 0:
         ball_location = [object_area, object_x, object_y]
-        #cv2.circle(image, (int(object_x), int(object_y)), int(20),                                                                                                                                                                                                                  
+        #cv2.circle(image, (int(object_x), int(object_y)), int(20),
         #    (0, 255, 255), 2)
-        # show the frame to our screen
+        #show the frame to our screen
+        result = cv2.bitwise_and (image, image, mask=colmask)
         #cv2.imshow("Frame", image)
-        #key = cv2.waitKey (5) & 0xFF
+        cv2.imshow ("Result", result)
+        key = cv2.waitKey (1) & 0xFF
     else:
         ball_location = None
  
     if ball_location:
         if (ball_location[0] > minimum_area) and (ball_location[0] < maximum_area):
-            if ball_location[1] > (center_image_x + (image_width/4)):
-                #robot.right(turn_speed)
-                print("Turning right")
-                pwm.set_pulse_width (0, go_straight + turn_speed)
-                pwm.set_pulse_width (4, forward_speed)
-                pwm.set_pulse_width (5, forward_speed)
-                pwm.set_pulse_width (6, 0)
-                pwm.set_pulse_width (7, 0)
-            elif ball_location[1] < (center_image_x - (image_width/4)):
-                #robot.left(turn_speed)
-                print("Turning left")
-                pwm.set_pulse_width (0, go_straight - turn_speed)
-                pwm.set_pulse_width (4, forward_speed)
-                pwm.set_pulse_width (5, forward_speed)
-                pwm.set_pulse_width (6, 0)
-                pwm.set_pulse_width (7, 0)
-            else:
-                #robot.forward(forward_speed)
-                print("Forward")
-                pwm.set_pulse_width (0, go_straight)
-                pwm.set_pulse_width (4, forward_speed)
-                pwm.set_pulse_width (5, forward_speed)
-                pwm.set_pulse_width (6, 0)
-                pwm.set_pulse_width (7, 0)
+            st_dir = int_map (ball_location[1], 0, image_width, steer_min, steer_max)
+            #if ball_location[1] > (center_image_x + (image_width/4)):
+            #    #robot.right(turn_speed)
+            #    print("Turning right")
+            #    car_control (turn_speed, forward_speed)
+            #elif ball_location[1] < (center_image_x - (image_width/4)):
+            #    #robot.left(turn_speed)
+            #    print("Turning left")
+            #    car_control (-turn_speed, forward_speed)
+            #else:
+            #    #robot.forward(forward_speed)
+            #    print("Forward")
+            #    car_control (st_dir, forward_speed)
+            print ("steering direction: ", st_dir)
+            car_control (st_dir - go_straight, forward_speed)
 
         elif (ball_location[0] < minimum_area):
             #robot.left(turn_speed)
             print("Target isn't large enough, searching")
-            pwm.set_pulse_width (0, go_straight)
-            pwm.set_pulse_width (4, 0)
-            pwm.set_pulse_width (5, 0)
-            pwm.set_pulse_width (6, 0)
-            pwm.set_pulse_width (7, 0)
+            #stop car
+            car_control (0, 0)
         else:
             #robot.stop()
             print("Target large enough, stopping")
-            pwm.set_pulse_width (0, go_straight)
-            pwm.set_pulse_width (4, 0)
-            pwm.set_pulse_width (5, 0)
-            pwm.set_pulse_width (6, 0)
-            pwm.set_pulse_width (7, 0)
+            #stop car
+            car_control (0, 0)
     else:
         #robot.left(turn_speed)
         print("Target not found, searching")
-        pwm.set_pulse_width (0, go_straight)
-        pwm.set_pulse_width (4, 0)
-        pwm.set_pulse_width (5, 0)
-        pwm.set_pulse_width (6, 0)
-        pwm.set_pulse_width (7, 0)
- 
+        #stop car
+        car_control (0, 0)
+
     rawCapture.truncate(0)
 
   except KeyboardInterrupt:
