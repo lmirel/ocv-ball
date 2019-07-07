@@ -24,7 +24,7 @@ args = vars(ap.parse_args())
 # list of tracked points
 #greenLower = (29, 86, 6)
 #greenUpper = (64, 255, 255)
-greenLower = (170, 70, 50)
+greenLower = (170, 100, 100)
 greenUpper = (180, 255, 255)
 pts = deque(maxlen=args["buffer"])
 
@@ -70,7 +70,7 @@ while True:
     # find contours in the mask and initialize the current
     # (x, y) center of the ball
     cnts = cv2.findContours(mask.copy(), cv2.RETR_EXTERNAL,
-	cv2.CHAIN_APPROX_SIMPLE)
+        cv2.CHAIN_APPROX_SIMPLE)
     cnts = imutils.grab_contours(cnts)
     center = None
 
@@ -85,12 +85,12 @@ while True:
         center = (int(M["m10"] / M["m00"]), int(M["m01"] / M["m00"]))
 
         # only proceed if the radius meets a minimum size
-        if radius > 10:
+        if radius > 5:
             # draw the circle and centroid on the frame,
             # then update the list of tracked points
             cv2.circle(frame, (int(x), int(y)), int(radius),
                 (0, 255, 255), 2)
-            cv2.circle(frame, center, 5, (0, 0, 255), -1)
+            #cv2.circle(frame, center, 5, (0, 0, 255), -1)
 
     # update the points queue
     #pts.appendleft(center)
@@ -109,7 +109,7 @@ while True:
 
     # show the frame to our screen
     cv2.imshow("Frame", frame)
-    key = cv2.waitKey(1) & 0xFF
+    key = cv2.waitKey(5) & 0xFF
 
     # if the 'q' key is pressed, stop the loop
     if key == ord("q"):
