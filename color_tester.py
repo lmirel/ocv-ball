@@ -47,22 +47,29 @@ while not estop:
 
 #for hue_value in range (1, 255):
 #    print ("current hue: ", hue_value)
-    lower_red = np.array([hue_value-10,100,100])
-    upper_red = np.array([hue_value+10, 255, 255])
+    lower_col = np.array([hue_value-10,100,100])
+    upper_col = np.array([hue_value+10, 255, 255])
  
     for frame in camera.capture_continuous(rawCapture, format="bgr", use_video_port=True):
       try:
         image = frame.array
- 
-        hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
- 
-        color_mask = cv2.inRange(hsv, lower_red, upper_red)
- 
-        result = cv2.bitwise_and(image, image, mask= color_mask)
+        #snip
+        blurred = cv2.GaussianBlur (image, (11, 11), 0)                                                                                                                                                                                                                            
+        hsv = cv2.cvtColor (blurred, cv2.COLOR_BGR2HSV)                                                                                                                                                                                                                            
+        # construct a mask for the color "green", then perform                                                                                                                                                                                                                    
+        # a series of dilations and erosions to remove any small                                                                                                                                                                                                                  
+        # blobs left in the mask                                                                                                                                                                                                                                                  
+        cmask = cv2.inRange (hsv, lower_col, upper_col)                                                                                                                                                                                                                        
+        cmask = cv2.erode (cmask, None, iterations=2)                                                                                                                                                                                                                               
+        cmask = cv2.dilate (cmask, None, iterations=2)                                                                                                                                                                                                                              
+        #snip
+        #hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
+        #color_mask = cv2.inRange(hsv, lower_col, upper_col)
+        result = cv2.bitwise_and (image, image, mask=cmask)
  
         cv2.imshow("Camera Output", image)
         cv2.imshow("HSV", hsv)
-        cv2.imshow("Color Mask", color_mask)
+        cv2.imshow("Color Mask", cmask)
         cv2.imshow("Final Result", result)
  
         rawCapture.truncate(0)
