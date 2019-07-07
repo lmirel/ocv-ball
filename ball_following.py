@@ -155,6 +155,8 @@ camera.rotation = 180
 rawCapture = PiRGBArray(camera, size=(image_width, image_height))
 center_image_x = image_width / 2
 center_image_y = image_height / 2
+min_radius = 5
+max_radius = 100
 minimum_area = 250
 maximum_area = 50000
  
@@ -168,8 +170,8 @@ pwm.set_frequency(50) # suitable for servos
 #robot = gpiozero.Robot(left=(22,27), right=(17,18))
 
 #movement speed
-speed_min = 6000
-forward_speed = 8000
+speed_min = 8000
+forward_speed = 9000
 speed_max = 10000
 #steering
 steer_min = 1100
@@ -195,7 +197,7 @@ def car_control (turn_angle, move_speed):
 
 #integer mapping
 def int_map (val, in_min, in_max, out_min, out_max):
-   return int((x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min)
+   return int((val - in_min) * (out_max - out_min) / (in_max - in_min) + out_min)
 
 #camera processing
 lower_color = np.array([HUE_VAL-10,100,100])
@@ -227,40 +229,55 @@ for frame in camera.capture_continuous (rawCapture, format="bgr", use_video_port
     #
     #color_mask = cv2.inRange(hsv, lower_color, upper_color)
     #find contours
-    image2, countours, hierarchy = cv2.findContours (colmask, cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
+    image2, cnts, hierarchy = cv2.findContours (colmask, cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
     #our object
-    object_area = 0
+    object_r = 0
     object_x = 0
     object_y = 0
+    #find object, pick the largest
+    if len(cnts) > 0:
+       cnts_max = max (cnts, key = cv2.contourArea)
+       ((c_x, c_y), c_r) = cv2.minEnclosingCircle (cnts_max)
+       object_x = c_x
+       object_y = c_y
+       object_r = int (c_r) #int (3.1415926535 * (c_r * c_r))
     #look for largest area we see
-    for contour in countours:
-        x, y, width, height = cv2.boundingRect(contour)
-        found_area = width * height
-        center_x = x + (width / 2)
-        center_y = y + (height / 2)
-        #print ("contour: ", cnt_k)
-        #print ("center x: ", center_x)
-        #print ("center y: ", center_y)
-        #store largest area
-        if object_area < found_area:
-            object_area = found_area
-            object_x = center_x
-            object_y = center_y
-    if object_area > 0:
-        ball_location = [object_area, object_x, object_y]
+    #for contour in cnts:
+    #    x, y, width, height = cv2.boundingRect(contour)
+    #    found_area = width * height
+    #    center_x = x + (width / 2)
+    #    center_y = y + (height / 2)
+    #    #print ("contour: ", cnt_k)
+    #    #print ("center x: ", center_x)
+    #    #print ("center y: ", center_y)
+    #    #store largest area
+    #    if object_area < found_area:
+    #        object_area = found_area
+    #        object_x = center_x
+    #        object_y = center_y
+    #
+    #print ("object area: ", object_area)
+    if object_r > 0:
+        ball_location = [object_r, object_x, object_y]
         #cv2.circle(image, (int(object_x), int(object_y)), int(20),
         #    (0, 255, 255), 2)
         #show the frame to our screen
-        result = cv2.bitwise_and (image, image, mask=colmask)
+        #cv2.circle (image, (int(object_x), int(object_y)), int(20),
+        #    (0, 255, 255), 2)
         #cv2.imshow("Frame", image)
-        cv2.imshow ("Result", result)
+        #
+        #result
+        #result = cv2.bitwise_and (image, image, mask=colmask)
+        #cv2.circle (result, (int(c_x), int(c_y)), int(object_r), (0, 255, 255), 2)
+        #cv2.imshow ("Result", result)
         key = cv2.waitKey (1) & 0xFF
     else:
         ball_location = None
  
     if ball_location:
-        if (ball_location[0] > minimum_area) and (ball_location[0] < maximum_area):
+        if (ball_location[0] > min_radius) and (ball_location[0] < max_radius):
             st_dir = int_map (ball_location[1], 0, image_width, steer_min, steer_max)
+            mv_spd = int_map (object_r, min_radius, max_radius, speed_max, speed_min)
             #if ball_location[1] > (center_image_x + (image_width/4)):
             #    #robot.right(turn_speed)
             #    print("Turning right")
@@ -273,10 +290,10 @@ for frame in camera.capture_continuous (rawCapture, format="bgr", use_video_port
             #    #robot.forward(forward_speed)
             #    print("Forward")
             #    car_control (st_dir, forward_speed)
-            print ("steering direction: ", st_dir)
-            car_control (st_dir - go_straight, forward_speed)
+            print ("steering direction: ", st_dir, "object radius: ", object_r, "move speed: ", mv_spd)
+            car_control (st_dir - go_straight, mv_spd)
 
-        elif (ball_location[0] < minimum_area):
+        elif (ball_location[0] < min_radius):
             #robot.left(turn_speed)
             print("Target isn't large enough, searching")
             #stop car
