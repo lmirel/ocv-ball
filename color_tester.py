@@ -12,9 +12,9 @@ def hisEqulColor(img):
     ycrcb = cv2.cvtColor (img, cv2.COLOR_BGR2YCR_CB)
     channels = cv2.split (ycrcb)
     #print (len(channels))
-    #cv2.equalizeHist (channels[0], channels[0])
-    clahe = cv2.createCLAHE (clipLimit = 2.0, tileGridSize = (64, 64))
-    channels[0] = clahe.apply (channels [0])
+    cv2.equalizeHist (channels[0], channels[0])
+    #clahe = cv2.createCLAHE (clipLimit = 2.0, tileGridSize = (8, 8))
+    #channels[0] = clahe.apply (channels [0])
     cv2.merge (channels, ycrcb)
     cv2.cvtColor (ycrcb, cv2.COLOR_YCR_CB2BGR, img)
     return img
@@ -42,29 +42,14 @@ else:
    for a in sys.argv[1:]:
       hue_value1 = (int(a))
       hue_value2 = (int(a))
+
 estop = False
-
 while not estop:
-    while not estop:
-        try:
-            print ("hue value: ", hue_value1)
-            #hue_value = int(input("Hue value between 0 and 255: "))
-            if (hue_value1 < 0) or (hue_value1 > 255):
-                raise ValueError
-        except ValueError:
-            estop = True
-            print("That isn't an integer between 0 and 255, try again")
-            exit ()
-        else:
-            break
-
-#for hue_value in range (1, 255):
-#    print ("current hue: ", hue_value)
-    lower_col1 = np.array([hue_value1,100,100])
-    upper_col1 = np.array([hue_value1 + 10, 255, 255])
+    lower_col1 = np.array ([0,  50,  50])
+    upper_col1 = np.array ([10, 255, 255])
     #
-    lower_col2 = np.array([hue_value2,100,100])
-    upper_col2 = np.array([hue_value2 + 10, 255, 255])
+    lower_col2 = np.array ([170, 50,  50])
+    upper_col2 = np.array ([180, 255, 255])
  
     for frame in camera.capture_continuous(rawCapture, format="bgr", use_video_port=True):
       try:
@@ -89,13 +74,9 @@ while not estop:
         # a series of dilations and erosions to remove any small
         # blobs left in the mask
         # lower mask (0-10)
-        lower_red = np.array ([0,  50,  50])
-        upper_red = np.array ([10, 255, 255])
-        mask0 = cv2.inRange (hsv, lower_red, upper_red)
+        mask0 = cv2.inRange (hsv, lower_col1, upper_col1)
         # upper mask (170-180)
-        lower_red = np.array ([170, 50,  50])
-        upper_red = np.array ([180, 255, 255])
-        mask1 = cv2.inRange (hsv, lower_red, upper_red)
+        mask1 = cv2.inRange (hsv, lower_col2, upper_col2)
         # join my masks
         cmask = mask0 + mask1
         #
