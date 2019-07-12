@@ -101,7 +101,8 @@ if __name__ == "__main__":
         # upper mask (170-180)
         mask1 = cv2.inRange (hsv, lower_col2, upper_col2)
         # join my masks
-        colmask = mask0 + mask1        #+snip
+        colmask = mask0 + mask1
+        #+snip
         # resize the frame, blur it, and convert it to the HSV
         # color space
         #frame = imutils.resize(frame, width=600)

@@ -26,8 +26,12 @@ args = vars(ap.parse_args())
 # list of tracked points
 #greenLower = (29, 86, 6)
 #greenUpper = (64, 255, 255)
-greenLower = (170, 100, 100)
-greenUpper = (180, 255, 255)
+#this is RED!
+lower_col1 = np.array ([0,  50,  50])
+upper_col1 = np.array ([10, 255, 255])
+#
+lower_col2 = np.array ([170, 50,  50])
+upper_col2 = np.array ([180, 255, 255])
 pts = deque(maxlen=args["buffer"])
 
 # if a video path was not supplied, grab the reference
@@ -61,19 +65,37 @@ while True:
     frame = imutils.rotate(frame, angle=180)
     blurred = cv2.GaussianBlur(frame, (11, 11), 0)
     hsv = cv2.cvtColor(blurred, cv2.COLOR_BGR2HSV)
-
+    # lower mask (0-10)
+    mask0 = cv2.inRange (hsv, lower_col1, upper_col1)
+    # upper mask (170-180)
+    mask1 = cv2.inRange (hsv, lower_col2, upper_col2)
+    # join my masks
+    mask = mask0 + mask1
     # construct a mask for the color "green", then perform
     # a series of dilations and erosions to remove any small
     # blobs left in the mask
-    mask = cv2.inRange(hsv, greenLower, greenUpper)
-    mask = cv2.erode(mask, None, iterations=2)
-    mask = cv2.dilate(mask, None, iterations=2)
-
+    #mask = cv2.inRange(hsv, greenLower, greenUpper)
+    mask = cv2.erode (mask, None, iterations=2)
+    mask = cv2.dilate (mask, None, iterations=2)
+    """
+    #detect circles
+    circles = cv2.HoughCircles (mask, cv2.HOUGH_GRADIENT, 1, 20,
+        param1=100, param2=20, minRadius=0, maxRadius=0)
+    #process circles
+    if circles is not None:
+        circles = np.uint16 (np.around (circles))
+        for i in circles[0,:]:
+            # draw the outer circle
+            cv2.circle (frame,(i[0],i[1]),i[2],(0,255,0),2)
+            # draw the center of the circle
+            cv2.circle (frame,(i[0],i[1]),2,(0,0,255),3)
+    """
+    #"""
     # find contours in the mask and initialize the current
     # (x, y) center of the ball
-    cnts = cv2.findContours(mask.copy(), cv2.RETR_EXTERNAL,
+    cnts = cv2.findContours (mask.copy(), cv2.RETR_EXTERNAL,
         cv2.CHAIN_APPROX_SIMPLE)
-    cnts = imutils.grab_contours(cnts)
+    cnts = imutils.grab_contours (cnts)
     center = None
 
     # only proceed if at least one contour was found
@@ -108,7 +130,7 @@ while True:
 	# draw the connecting lines
         #thickness = int(np.sqrt(args["buffer"] / float(i + 1)) * 2.5)
         #cv2.line(frame, pts[i - 1], pts[i], (0, 0, 255), thickness)
-
+    #"""
     # show the frame to our screen
     cv2.imshow("Frame", frame)
     key = cv2.waitKey(5) & 0xFF
